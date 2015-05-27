@@ -11,32 +11,27 @@ data Position = Position {
               deriving (Eq)
 
 data PosPlayer = PosPlayer {
-  getPlayerPos :: Position,
+  getPos :: Position,
   getPlayer :: Maybe Player}
               deriving (Eq)
 
 data Status =
-  Empty
-  | InPlay
-  | Finished
-  deriving (Eq, Show)
+  Empty Step
+  | InPlay Step
+  | Finished Step
+  deriving (Show)
 
 data Board = Board {
-  getPosPlayer :: [PosPlayer],
+  getPosPlayers :: [PosPlayer],
   getStatus   :: Status}
-           deriving (Eq)
-
 
 emptyBoard :: Board
-emptyBoard = Board posPlayer Empty
+emptyBoard = Board posPlayer (Empty $ Step [])
   where posPlayer = map (\x -> PosPlayer x Nothing) matrix  
         matrix = [Position (x,y)| x <- [1..3], y <- [1..3]]
 
-move :: Board -> Position -> Player -> Either Board String
-move b p who = 
-  case getStatus b of
-   Finished -> Right "move takes an Empty or InPlay board"
-   _ -> setPosition b p who
+data Step = Step [PosPlayer]
+            deriving (Show)
 
 testBoard :: Board
 testBoard = 
@@ -49,7 +44,7 @@ testBoard =
          PosPlayer (Position (3,1)) Nothing,
          PosPlayer (Position (3,2)) Nothing,
          PosPlayer (Position (3,3)) (Just X)]
-         Finished
+         (Finished $ Step [])
 
 toPosition:: (Int, Int) -> Position
 toPosition (a, b) = Position (a, b)
@@ -89,7 +84,7 @@ whoMakeLine b (Line px py pz) = do
 
 whoWon :: Board -> Either (Maybe Player) String
 whoWon b = case getStatus b of
-            Finished -> Left player
+            Finished _ -> Left player
             _ -> Right "Error: whoWon can only run on finished board!"
             where player :: Maybe Player
                   player = case catMaybes $ map (whoMakeLine b) allLines of
@@ -97,7 +92,7 @@ whoWon b = case getStatus b of
                              x:_ -> Just x
             
 playerAt :: Board -> Position -> Maybe Player
-playerAt (Board _ Empty) _ = Nothing
+playerAt (Board _ (Empty _)) _ = Nothing
 playerAt (Board b _) p = 
   case find (\(PosPlayer pos _) -> pos==p) b of
    Just (PosPlayer pos' player) -> player
@@ -109,15 +104,37 @@ isOccupied b p =
    Just _ -> True
    _ -> False
 
-setPosition :: Board -> Position -> Player -> Either Board String
-setPosition b@(Board bb _) p who =
-  if isOccupied b p
-  then Right $ "Position" ++ show p ++ "was occupied. replay please! "
-  else Left $ Board posPlayer InPlay
-       where posPlayer = foldl (\acc pp ->
-                                 if getPlayerPos pp == p
-                                 then acc ++ [PosPlayer p (Just who)]
-                                 else acc ++ [pp]) [] bb
+move :: Board -> Position -> Player -> Either Board String
+move b p who =
+  case getStatus b of
+   Finished _ -> Right $ "Error: can't move more for finished board!"
+   Empty (Step pp)-> Left $ Board posPlayer (status pp)
+   InPlay (Step pp) -> 
+     if isOccupied b p
+     then Right $ "Position" ++ show p ++ "was occupied. replay please! "
+     else Left $ Board posPlayer (status pp)
+  where posPlayer = setPosPlayer (getPosPlayers b) p (Just who)
+        status pp = InPlay $ Step $ (PosPlayer p (Just who)):pp
+
+test_move = move emptyBoard (Position (1,2)) X
+test_takeBack = case test_move  of
+        Left b -> takeBack b
+
+takeBack :: Board -> Either Board String
+takeBack b = 
+  case getStatus b of
+   Empty _ -> Right "Error: Can't do takeBack for Empty board!"
+   InPlay (Step x) -> genNewBoard x
+   Finished (Step x) -> genNewBoard x
+  where genNewBoard (x:xs) = Left $ Board posPlayer step
+          where posPlayer = setPosPlayer (getPosPlayers b) (getPos x) Nothing
+                step = InPlay (Step xs)
+
+setPosPlayer :: [PosPlayer] -> Position -> Maybe Player -> [PosPlayer]
+setPosPlayer p pos mp = foldl (\acc pp ->
+                            if  getPos pp == pos
+                            then acc ++ [PosPlayer pos mp]
+                            else acc ++ [pp]) [] p
 
 instance Show Position where
   show (Position (x, y)) = 
@@ -128,8 +145,8 @@ instance Show PosPlayer where
     "(" ++ show pos ++ ", " ++ show player ++ ")"
 
 instance Show Board where
-  show (Board xs _) = 
-    unlines $ map showRow (group3By3 xs)
+  show (Board xs s) = 
+    (unlines $ map showRow (group3By3 xs)) ++ show s
     where showRow = foldl (\acc x -> acc ++ show x ++ " " ) ""
           group3By3 :: [a] -> [[a]]
           group3By3 [] = []
