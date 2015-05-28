@@ -59,6 +59,7 @@ executable tictactoe
   -- Other library packages from which modules are imported.
   build-depends:       base >=4.8 && <4.9
                      , mtl >= 2.2.1
+                     , random >= 1.1
   
   -- Directories containing source files.
   hs-source-dirs:      src
