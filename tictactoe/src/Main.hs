@@ -115,43 +115,41 @@ allLines = [f x | f <- [row, col], x <- [1,2,3]] ++
 data Line = Line Position Position Position
             deriving (Show)
 
-whoMakeLine :: Board -> Line -> Maybe Player
-whoMakeLine b (Line px py pz) = do
-     x <- playerAt b px
-     y <- playerAt b py
-     z <- playerAt b pz
+whoMakeLine :: [PosPlayer] -> Line -> Maybe Player
+whoMakeLine p (Line px py pz) = do
+     x <- playerAt p px
+     y <- playerAt p py
+     z <- playerAt p pz
      if x==y && y==z
        then return x
        else Nothing
 
-whoWon :: Board -> Maybe Player
-whoWon b =
-  case catMaybes $ map (whoMakeLine b) allLines of
+whoWon :: [PosPlayer] -> Maybe Player
+whoWon p =
+  case catMaybes $ map (whoMakeLine p) allLines of
    [] -> Nothing
    x:_ -> Just x
 
-playerAt :: Board -> Position -> Maybe Player
-playerAt (Board _ Empty _) _ = Nothing
-playerAt (Board b _ _ ) p =
-  case find (\(PosPlayer pos _) -> pos==p) b of
-   Just (PosPlayer pos' player) -> player
+playerAt :: [PosPlayer] -> Position -> Maybe Player
+playerAt pp p =
+  case find (\(PosPlayer pos _) -> pos==p) pp of
+   Just (PosPlayer _ player) -> player
    _ -> Nothing
 
 move :: Board -> Position -> Player -> Either Board String
 move (Board _ Finished _) _ _ = 
   Right $ "Error: can't move more for finished board!"
 move b@(Board posPlayer status (Step s)) pos who = 
-  if isOccupied b pos
+  if isOccupied posPlayer pos
   then Right $ "Warning: Position" ++ show pos ++ " was occupied, play again!"
   else Left $ Board posPlayer' status' s'
        where posPlayer' = setPosPlayer posPlayer pos (Just who)
              s' = Step $ PosPlayer pos (Just who) : s
              status' =
                -- First do move on given board, then calc status
-               let b' = Board posPlayer' InPlay s'
-               in case whoWon b' of
+                case whoWon posPlayer' of
                    Just _ -> Finished
-                   _ -> if isBoardFull b'
+                   _ -> if isBoardFull posPlayer'
                         then Finished
                         else InPlay
 
@@ -162,9 +160,9 @@ takeBack (Board p _ (Step (x:xs))) =
   Left $ Board p' InPlay (Step xs)
   where p' = setPosPlayer p (getPos x) Nothing
 
-isOccupied :: Board -> Position -> Bool
-isOccupied b p =
-  case playerAt b p of
+isOccupied :: [PosPlayer] -> Position -> Bool
+isOccupied pp p =
+  case playerAt pp p of
    Just _ -> True
    _ -> False
 
@@ -197,8 +195,8 @@ allPosition = [Position (m, n) | m <- [1..3], n <- [1..3]]
 isInBoard :: Position -> Bool
 isInBoard p = elem p allPosition
 
-isBoardFull :: Board -> Bool
-isBoardFull b = and $ isOccupied b <$> allPosition
+isBoardFull :: [PosPlayer] -> Bool
+isBoardFull p = and $ isOccupied p <$> allPosition
 
 posParser :: String -> Maybe (Int, Int)
 posParser cs0 =
@@ -220,14 +218,14 @@ isFinished (Board _ Finished _) = True
 isFinished (Board _ _ _) = False
 
 loopGame :: Board -> Player -> IO()
-loopGame b@(Board _ Finished _) who = do
+loopGame b@(Board pp Finished _) who = do
   putStrLn $ info "Current board is:\n" ++ show b
-  case whoWon b of
+  case whoWon pp of
    Just p -> putStrLn $ info "Game finished. Player "++ show who ++ " win!"
-   Nothing -> if isBoardFull b
+   Nothing -> if isBoardFull pp
               then putStrLn $ info "Game finished. We tie!"
               else putStrLn $ info "Something wrong!"
-loopGame b@(Board _ _ _) who = do
+loopGame b who = do
   putStrLn $ info "Current board is:\n" ++ show b
   putStrLn $ info "Player " ++ show who ++ ", input your position (eg: 1 2): "
   pos <- getLine
@@ -244,6 +242,7 @@ loopGame b@(Board _ _ _) who = do
    Nothing -> do
      putStrLn "Error: Invalid input!"
      loopGame b who
+
 
 main :: IO()
 main = do
