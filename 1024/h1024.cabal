@@ -17,6 +17,7 @@ cabal-version:       >=1.10
 
 executable h1024
   main-is:             Main.hs
+  ghc-options:         -threaded
   -- other-modules:       
   -- other-extensions:    
   build-depends:       base >=4.8 && <4.9
