@@ -31,12 +31,6 @@ test_matrix = M.fromLists [[2,2,0,2],
                            [4,0,0,2],
                            [2,2,0,0]]
 
--- squeezeRight :: [Int] -> [Int]
--- squeezeRight = addLeadingZero . dropTailZero . map sum . group . (L.filter (/=0))
-
--- dropTailZero :: [Int] -> [Int]
--- dropTailZero = reverse . dropWhile  (==0).  reverse
-
 squeeze :: [Int] -> [Int]
 squeeze = map sum . group . (L.filter (/=0))
 
@@ -46,12 +40,11 @@ squeezeLeft = addTailZero . squeeze
 squeezeRight :: [Int] -> [Int]
 squeezeRight = addLeadingZero . squeeze
 
-
 addTailZero :: [Int] -> [Int]
-addTailZero x = take maxSize $ x ++ (repeat 0)
+addTailZero = take maxSize . (++ repeat 0)
 
 addLeadingZero :: [Int] -> [Int]
-addLeadingZero x = (take (maxSize - (length x) ) $ repeat 0) ++ x
+addLeadingZero = reverse . addTailZero . reverse
 
 tblLeft :: Matrix Int -> Matrix Int
 tblLeft = fromLists . map squeezeLeft . toLists
