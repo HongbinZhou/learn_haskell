@@ -1,19 +1,39 @@
-import Graphics.Vty.Widgets.All
-import qualified Data.Text as T
+{-# LANGUAGE OverloadedStrings #-}
 
--- ref: https://github.com/jtdaugherty/vty-ui/blob/master/doc/ch1/getting_started.tex
+module Main where
+
+import qualified Data.Text as T
+import Graphics.Vty.Widgets.All
+import Graphics.Vty.Input.Events
+
 main :: IO ()
 main = do
-   e <- editWidget
-   ui <- centered e
+  tbl <- newTable [column ColAuto, column ColAuto] BorderFull
+  n1 <- plainText "2"
+  n2 <- plainText "4"
+  n3 <- plainText " "
+  n4 <- plainText " "
+  addRow tbl $ n1 .|. n2
+  addRow tbl $ n3 .|. n4
 
-   fg <- newFocusGroup
-   addToFocusGroup fg e
+  ui <- centered tbl
 
-   c <- newCollection
-   addToCollection c ui fg
+  fg <- newFocusGroup
+  addToFocusGroup fg tbl
 
-   e `onActivate` \this ->
-     getEditText this >>= (error . ("You entered: " ++) . T.unpack)
+  coll <- newCollection
+  addToCollection coll ui fg
 
-   runUi c defaultContext
+  fg `onKeyPressed` \_ k _ ->
+    case k of
+     KEsc -> shutdownUi >> return True
+     KDown -> do
+       setText n1 "2"
+       setText n2 " "
+       setText n3 "2"
+       setText n4 "4"
+       return True
+     _ -> return False
+
+  runUi coll defaultContext
+  
