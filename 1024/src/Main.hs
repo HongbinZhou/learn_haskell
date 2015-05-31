@@ -47,10 +47,24 @@ addLeadingZero :: [Int] -> [Int]
 addLeadingZero = reverse . addTailZero . reverse
 
 tblLeft :: Matrix Int -> Matrix Int
-tblLeft = fromLists . map squeezeLeft . toLists
+tblLeft = fromLists . growRow1' . map squeezeLeft . toLists
 
 tblRight :: Matrix Int -> Matrix Int
-tblRight = fromLists . map squeezeRight . toLists
+tblRight = fromLists . growRow1 . map squeezeRight . toLists
+
+growRow1' :: [[Int]] -> [[Int]]
+growRow1' (x:xs) = grow' x : xs
+
+growRow1 :: [[Int]] -> [[Int]]
+growRow1 (x:xs) = grow x : xs
+
+grow' :: [Int] -> [Int]
+grow' = reverse . grow . reverse
+
+grow :: [Int] -> [Int]
+grow [] = []
+grow (0:xs) = 2:xs
+grow (x:xs) = x:(grow xs)
 
 tblDown :: Matrix Int -> Matrix Int
 tblDown = M.transpose . tblRight . M.transpose
