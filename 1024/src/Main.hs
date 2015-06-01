@@ -31,14 +31,29 @@ test_matrix = M.fromLists [[2,2,0,2],
                            [4,0,0,2],
                            [2,2,0,0]]
 
+group2by2 :: [Int] -> [[Int]]
+group2by2 [] = [[]]
+group2by2 [x] = [[x]]
+group2by2 (x:y:xs) = [x,y]:group2by2 xs
+
+group' :: [Int] -> [[Int]]
+group' [] = [[]]
+group' [x] = [[x]]
+group' s@(x:y:xs)
+  | x==y = group2by2 s
+  | otherwise = [x] : group' (y:xs)
+
 squeeze :: [Int] -> [Int]
-squeeze = map sum . group . (L.filter (/=0))
+squeeze = map sum . group' . (L.filter (/=0))
+
+squeeze' :: [Int] -> [Int]
+squeeze' = map sum . group . (L.filter (/=0))
 
 squeezeLeft :: [Int] -> [Int]
 squeezeLeft = addTailZero . squeeze
 
 squeezeRight :: [Int] -> [Int]
-squeezeRight = addLeadingZero . squeeze
+squeezeRight = addLeadingZero . reverse . squeeze . reverse
 
 addTailZero :: [Int] -> [Int]
 addTailZero = take maxSize . (++ repeat 0)
