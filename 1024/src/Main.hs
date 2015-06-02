@@ -31,6 +31,22 @@ test_matrix = M.fromLists [[2,2,0,2],
                            [4,0,0,2],
                            [2,2,0,0]]
 
+findAllHole :: [Int] -> [(Int,Int)]
+findAllHole l = filter (\(a, _) -> a==0) $ zip l [0..]
+
+findAllHoleIdx :: [Int] -> [Int]
+findAllHoleIdx l = foldl (\acc (a, b) -> acc ++ [b]) [] $ findAllHole l
+
+pickup :: (RandomGen g) => g -> [Int] -> Int
+pickup g l = let (r, _) = randomR (0, (length l)-1) g 
+                 (_, x:_) = splitAt r l
+             in x
+
+fillOneHole :: (RandomGen g) => g -> [Int] -> [Int]
+fillOneHole g l = let r = pickup g $ findAllHoleIdx l
+                      (x, y:ys) = splitAt r l
+                  in x ++ [2] ++ ys
+
 group2by2 :: [Int] -> [[Int]]
 group2by2 [] = [[]]
 group2by2 [x] = [[x]]
@@ -61,12 +77,6 @@ addTailZero = take maxSize . (++ repeat 0)
 addLeadingZero :: [Int] -> [Int]
 addLeadingZero = reverse . addTailZero . reverse
 
-tblLeft :: Matrix Int -> Matrix Int
-tblLeft = fromLists . growRow1' . map squeezeLeft . toLists
-
-tblRight :: Matrix Int -> Matrix Int
-tblRight = fromLists . growRow1 . map squeezeRight . toLists
-
 growRow1' :: [[Int]] -> [[Int]]
 growRow1' (x:xs) = grow' x : xs
 
@@ -81,11 +91,25 @@ grow [] = []
 grow (0:xs) = 2:xs
 grow (x:xs) = x:(grow xs)
 
-tblDown :: Matrix Int -> Matrix Int
-tblDown = M.transpose . tblRight . M.transpose
+squeezeMatrix :: (RandomGen g) => g -> ([Int] -> [Int]) -> Matrix Int -> Matrix Int
+squeezeMatrix g f = fromList maxSize maxSize . fillOneHole g . concat . map f . toLists
 
-tblUp :: Matrix Int -> Matrix Int
-tblUp = M.transpose . tblLeft . M.transpose
+tblLeft :: (RandomGen g) => g -> Matrix Int -> Matrix Int
+tblLeft g = squeezeMatrix g squeezeLeft
+
+tblRight :: (RandomGen g) => g -> Matrix Int -> Matrix Int
+tblRight g = squeezeMatrix g squeezeRight
+
+tblDown :: (RandomGen g) => g -> Matrix Int -> Matrix Int
+tblDown g = M.transpose . tblRight g . M.transpose
+
+tblUp :: (RandomGen g) => g -> Matrix Int -> Matrix Int
+tblUp g = M.transpose . tblLeft g . M.transpose
+
+test_tbl:: (StdGen -> Matrix Int -> Matrix Int) -> IO (Matrix Int)
+test_tbl f = do
+  g <- newStdGen
+  return $ f g test_matrix
 
 main :: IO ()
 main = do
