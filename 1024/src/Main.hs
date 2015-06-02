@@ -111,16 +111,35 @@ test_tbl f = do
   g <- newStdGen
   return $ f g test_matrix
 
+test_tbl_all :: IO [Matrix Int]
+test_tbl_all = sequence $ map (test_tbl) [tblLeft, tblRight, tblUp, tblDown]
+
+
+showRow [a,b,c,d] = do
+  a' <- plainText . T.pack . show $ a
+  b' <- plainText . T.pack . show $ b
+  c' <- plainText . T.pack . show $ c
+  d' <- plainText . T.pack . show $ d
+  return $ a' .|. b' .|. c' .|. d'
+
+showMatrix m tbl = do
+  let [row1, row2, row3, row4] = M.toLists m
+  row1' <- showRow row1
+  row2' <- showRow row2
+  row3' <- showRow row3
+  row4' <- showRow row4
+  addRow tbl $ row1'
+  addRow tbl $ row2'
+  addRow tbl $ row3'
+  addRow tbl $ row4'
+
 main :: IO ()
 main = do
-  tbl <- newTable [column ColAuto, column ColAuto] BorderFull
-  n1 <- plainText "2"
-  n2 <- plainText "4"
-  n3 <- plainText " "
-  n4 <- plainText " "
-  addRow tbl $ n1 .|. n2
-  addRow tbl $ n3 .|. n4
-
+  tbl <- newTable [column ColAuto, 
+                   column ColAuto,
+                   column ColAuto,
+                   column ColAuto] BorderFull
+  showMatrix  test_matrix tbl
   ui <- centered tbl
 
   fg <- newFocusGroup
@@ -132,12 +151,12 @@ main = do
   fg `onKeyPressed` \_ k _ ->
     case k of
      KEsc -> shutdownUi >> return True
-     KDown -> do
-       setText n1 "2"
-       setText n2 " "
-       setText n3 "2"
-       setText n4 "4"
-       return True
+     -- KDown -> do
+     --   setText n1 "2"
+     --   setText n2 " "
+     --   setText n3 "2"
+     --   setText n4 "4"
+     --   return True
      _ -> return False
 
   runUi coll defaultContext
