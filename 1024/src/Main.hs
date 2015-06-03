@@ -133,6 +133,30 @@ setTextMatrix a b = do
   sequence $ elementwise setText a ((T.pack . show) <$> b)
   return ()
 
+loopGame tbl mat gen m  = do
+
+  tbl `onKeyPressed` \_ k _ ->
+    case k of
+     KEsc -> shutdownUi >> return True
+     KDown -> do
+       setTextMatrix mat (tblDown gen m)
+       loopGame tbl mat gen (tblDown gen m)
+       return True
+     KUp -> do
+       setTextMatrix mat (tblUp gen m)
+       loopGame tbl mat gen (tblUp gen m)
+       return True
+     KRight -> do
+       setTextMatrix mat (tblRight gen m)
+       loopGame tbl mat gen (tblRight gen m)
+       return True
+     KLeft -> do
+       setTextMatrix mat (tblLeft gen m)
+       loopGame tbl mat gen (tblLeft gen m)
+       return True
+     _ -> return False
+
+
 main :: IO ()
 main = do
   tbl <- newTable [column ColAuto,
@@ -153,25 +177,6 @@ main = do
   coll <- newCollection
   addToCollection coll ui fg
 
-
-  fg `onKeyPressed` \_ k _ ->
-    case k of
-     KEsc -> shutdownUi >> return True
-     KDown -> do
-       setTextMatrix mat (tblDown gen m)
-       return True
-     KUp -> do
-       setTextMatrix mat (tblUp gen m)
-       return True
-
-     KRight -> do
-       setTextMatrix mat (tblRight gen m)
-       return True
-
-     KLeft -> do
-       setTextMatrix mat (tblLeft gen m)
-       return True
-
-     _ -> return False
+  loopGame tbl mat gen m
 
   runUi coll defaultContext
