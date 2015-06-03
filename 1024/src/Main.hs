@@ -38,7 +38,7 @@ findAllHoleIdx :: [Int] -> [Int]
 findAllHoleIdx l = foldl (\acc (a, b) -> acc ++ [b]) [] $ findAllHole l
 
 pickup :: (RandomGen g) => g -> [Int] -> Int
-pickup g l = let (r, _) = randomR (0, (length l)-1) g 
+pickup g l = let (r, _) = randomR (0, (length l)-1) g
                  (_, x:_) = splitAt r l
              in x
 
@@ -114,32 +114,31 @@ test_tbl f = do
 test_tbl_all :: IO [Matrix Int]
 test_tbl_all = sequence $ map (test_tbl) [tblLeft, tblRight, tblUp, tblDown]
 
-
-showRow [a,b,c,d] = do
-  a' <- plainText . T.pack . show $ a
-  b' <- plainText . T.pack . show $ b
-  c' <- plainText . T.pack . show $ c
-  d' <- plainText . T.pack . show $ d
-  return $ a' .|. b' .|. c' .|. d'
-
+showMatrix :: Matrix (Widget FormattedText) -> Widget Table -> IO ()
 showMatrix m tbl = do
   let [row1, row2, row3, row4] = M.toLists m
-  row1' <- showRow row1
-  row2' <- showRow row2
-  row3' <- showRow row3
-  row4' <- showRow row4
-  addRow tbl $ row1'
-  addRow tbl $ row2'
-  addRow tbl $ row3'
-  addRow tbl $ row4'
+  addRow tbl row1
+  addRow tbl row2
+  addRow tbl row3
+  addRow tbl row4
+
+textMatrix :: Matrix Int -> IO (Matrix (Widget FormattedText))
+textMatrix = sequence . fmap (plainText . T.pack . show)
+
+setTextMatrix :: Matrix (Widget FormattedText) -> Matrix Int -> IO ()
+setTextMatrix a b = do
+  sequence $ elementwise setText a ((T.pack . show) <$> b)
+  return ()
 
 main :: IO ()
 main = do
-  tbl <- newTable [column ColAuto, 
+  tbl <- newTable [column ColAuto,
                    column ColAuto,
                    column ColAuto,
                    column ColAuto] BorderFull
-  showMatrix  test_matrix tbl
+  mat <- textMatrix test_matrix
+  showMatrix mat tbl
+
   ui <- centered tbl
 
   fg <- newFocusGroup
@@ -148,15 +147,25 @@ main = do
   coll <- newCollection
   addToCollection coll ui fg
 
+  gen <- newStdGen
   fg `onKeyPressed` \_ k _ ->
     case k of
      KEsc -> shutdownUi >> return True
-     -- KDown -> do
-     --   setText n1 "2"
-     --   setText n2 " "
-     --   setText n3 "2"
-     --   setText n4 "4"
-     --   return True
+     KDown -> do
+       setTextMatrix mat (tblDown gen test_matrix)
+       return True
+     KUp -> do
+       setTextMatrix mat (tblUp gen test_matrix)
+       return True
+
+     KRight -> do
+       setTextMatrix mat (tblRight gen test_matrix)
+       return True
+
+     KLeft -> do
+       setTextMatrix mat (tblLeft gen test_matrix)
+       return True
+
      _ -> return False
 
   runUi coll defaultContext
