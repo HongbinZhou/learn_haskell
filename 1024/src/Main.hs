@@ -37,6 +37,12 @@ test_matrix = M.fromLists [[2,2,0,2],
                            [4,0,0,2],
                            [2,2,0,0]]
 
+findAllHoleIdx' :: [Int] -> Maybe [Int]
+findAllHoleIdx' l =
+  case foldl (\acc (a, i) -> if a==0 then acc ++ [i] else acc ) [] (zip l [0..]) of
+   [] -> Nothing
+   x -> Just x
+
 findAllHole :: [Int] -> [(Int,Int)]
 findAllHole l = filter (\(a, _) -> a==0) $ zip l [0..]
 
@@ -47,6 +53,15 @@ pickup :: (RandomGen g) => g -> [Int] -> Int
 pickup g l = let (r, _) = randomR (0, (length l)-1) g
                  (_, x:_) = splitAt r l
              in x
+
+-- todo: text and improve!
+fillOneHole' :: (RandomGen g) => g -> [Int] -> Maybe [Int]
+fillOneHole' g l =
+  case findAllHoleIdx' l of
+   Nothing -> Nothing
+   Just x -> let r = pickup g x
+                 (x, y:ys) = splitAt r l
+             in Just $ x ++ [2] ++ ys
 
 fillOneHole :: (RandomGen g) => g -> [Int] -> [Int]
 fillOneHole g l = let r = pickup g $ findAllHoleIdx l
