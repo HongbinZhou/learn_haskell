@@ -25,6 +25,12 @@ initRow x
 initTable :: Matrix Int
 initTable = (initRow 1) <-> zero (maxSize-1) maxSize
 
+sandMatrix :: (RandomGen g) => g -> Matrix Int -> Matrix Int
+sandMatrix g = fromList maxSize maxSize . fillOneHole g . toList
+
+initMatrix :: (RandomGen g) => g -> Matrix Int
+initMatrix g = sandMatrix g (zero maxSize maxSize)
+
 test_matrix :: Matrix Int
 test_matrix = M.fromLists [[2,2,0,2],
                            [4,0,2,0],
@@ -114,13 +120,10 @@ test_tbl f = do
 test_tbl_all :: IO [Matrix Int]
 test_tbl_all = sequence $ map (test_tbl) [tblLeft, tblRight, tblUp, tblDown]
 
-showMatrix :: Matrix (Widget FormattedText) -> Widget Table -> IO ()
-showMatrix m tbl = do
-  let [row1, row2, row3, row4] = M.toLists m
-  addRow tbl row1
-  addRow tbl row2
-  addRow tbl row3
-  addRow tbl row4
+matrixToTable :: Widget Table -> Matrix (Widget FormattedText) -> IO ()
+matrixToTable tbl m  = do
+  sequence $ addRow tbl <$> M.toLists m
+  return ()
 
 textMatrix :: Matrix Int -> IO (Matrix (Widget FormattedText))
 textMatrix = sequence . fmap (plainText . T.pack . show)
@@ -136,8 +139,11 @@ main = do
                    column ColAuto,
                    column ColAuto,
                    column ColAuto] BorderFull
-  mat <- textMatrix test_matrix
-  showMatrix mat tbl
+  gen <- newStdGen
+
+  let m = initMatrix gen
+  mat <- textMatrix m
+  matrixToTable tbl mat
 
   ui <- centered tbl
 
@@ -147,23 +153,23 @@ main = do
   coll <- newCollection
   addToCollection coll ui fg
 
-  gen <- newStdGen
+
   fg `onKeyPressed` \_ k _ ->
     case k of
      KEsc -> shutdownUi >> return True
      KDown -> do
-       setTextMatrix mat (tblDown gen test_matrix)
+       setTextMatrix mat (tblDown gen m)
        return True
      KUp -> do
-       setTextMatrix mat (tblUp gen test_matrix)
+       setTextMatrix mat (tblUp gen m)
        return True
 
      KRight -> do
-       setTextMatrix mat (tblRight gen test_matrix)
+       setTextMatrix mat (tblRight gen m)
        return True
 
      KLeft -> do
-       setTextMatrix mat (tblLeft gen test_matrix)
+       setTextMatrix mat (tblLeft gen m)
        return True
 
      _ -> return False
