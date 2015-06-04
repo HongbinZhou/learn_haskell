@@ -153,10 +153,7 @@ loopGame tbl mat gen m  = do
 
 main :: IO ()
 main = do
-  tbl <- newTable [column ColAuto,
-                   column ColAuto,
-                   column ColAuto,
-                   column ColAuto] BorderFull
+  tbl <- newTable (take maxSize $ repeat (column ColAuto)) BorderFull
   gen <- newStdGen
 
   let m = initMatrix gen
