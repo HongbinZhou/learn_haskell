@@ -106,47 +106,43 @@ setTextMatrix a b = do
   sequence $ elementwise setText a ((T.pack . show) <$> b)
   return ()
 
-loopGame tbl mat gen m  = do
+tblMove :: RandomGen g =>
+     g ->
+     Widget a ->
+     (g -> Matrix Int -> Either (Matrix Int) String) ->
+     Matrix Int ->
+     Matrix (Widget FormattedText) ->
+     IO ()
+tblMove gen tbl f m mat = do
+       case f gen m of
+        Left mm -> do
+          setTextMatrix mat mm
+          loopGame gen tbl mat mm
+        Right s -> do
+            putStrLn "Game over!"
+
+loopGame :: RandomGen g =>
+     g
+     -> Widget a
+     -> Matrix (Widget FormattedText)
+     -> Matrix Int
+     -> IO ()
+loopGame gen tbl mat m  = do
 
   tbl `onKeyPressed` \_ k _ ->
     case k of
      KEsc -> shutdownUi >> return True
      KDown -> do
-       case tblDown gen m of
-        Left mm -> do
-          setTextMatrix mat mm
-          loopGame tbl mat gen mm
-        Right s -> do
-            putStrLn "Game over!"
+       tblMove gen tbl tblDown m mat
        return True
-
      KUp -> do
-
-       case tblUp gen m of
-        Left mm -> do
-          setTextMatrix mat mm
-          loopGame tbl mat gen mm
-        Right s -> do
-            putStrLn "Game over!"
+       tblMove gen tbl tblUp m mat
        return True
      KRight -> do
-
-       case tblRight gen m of
-        Left mm -> do
-          setTextMatrix mat mm
-          loopGame tbl mat gen mm
-        Right s -> do
-            putStrLn "Game over!"
+       tblMove gen tbl tblRight m mat
        return True
      KLeft -> do
-
-       case tblLeft gen m of
-        Left mm -> do
-          setTextMatrix mat mm
-          loopGame tbl mat gen mm
-        Right s -> do
-            putStrLn "Game over!"
-
+       tblMove gen tbl tblLeft m mat
        return True
      _ -> return False
 
@@ -168,6 +164,6 @@ main = do
   coll <- newCollection
   addToCollection coll ui fg
 
-  loopGame tbl mat gen m
+  loopGame gen tbl mat m
 
   runUi coll defaultContext
