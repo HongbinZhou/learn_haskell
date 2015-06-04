@@ -11,25 +11,10 @@ import System.Random
 import qualified Data.Vector as V
 import Data.List as L
 
-
 maxSize = 4 :: Int
 
-initRow :: Int -> Matrix Int
-initRow x
-  | x<1 = h 1
-  | x > maxSize = h maxSize
-  | otherwise = h x
-  where h x = let z = zero 1 maxSize in
-               setElem 2 (1, x) z
-
-initTable :: Matrix Int
-initTable = (initRow 1) <-> zero (maxSize-1) maxSize
-
-sandMatrix :: (RandomGen g) => g -> Matrix Int -> Matrix Int
-sandMatrix g = fromList maxSize maxSize . fillOneHole g . toList
-
 initMatrix :: (RandomGen g) => g -> Matrix Int
-initMatrix g = sandMatrix g (zero maxSize maxSize)
+initMatrix g = let (Left x) = tblLeft g (zero maxSize maxSize) in x
 
 test_matrix :: Matrix Int
 test_matrix = M.fromLists [[2,2,0,2],
@@ -37,36 +22,25 @@ test_matrix = M.fromLists [[2,2,0,2],
                            [4,0,0,2],
                            [2,2,0,0]]
 
-findAllHoleIdx' :: [Int] -> Maybe [Int]
-findAllHoleIdx' l =
+findAllHoleIdx :: [Int] -> Maybe [Int]
+findAllHoleIdx l =
   case foldl (\acc (a, i) -> if a==0 then acc ++ [i] else acc ) [] (zip l [0..]) of
    [] -> Nothing
    x -> Just x
-
-findAllHole :: [Int] -> [(Int,Int)]
-findAllHole l = filter (\(a, _) -> a==0) $ zip l [0..]
-
-findAllHoleIdx :: [Int] -> [Int]
-findAllHoleIdx l = foldl (\acc (a, b) -> acc ++ [b]) [] $ findAllHole l
 
 pickup :: (RandomGen g) => g -> [Int] -> Int
 pickup g l = let (r, _) = randomR (0, (length l)-1) g
                  (_, x:_) = splitAt r l
              in x
 
--- todo: text and improve!
-fillOneHole' :: (RandomGen g) => g -> [Int] -> Maybe [Int]
-fillOneHole' g l =
-  case findAllHoleIdx' l of
-   Nothing -> Nothing
-   Just x -> let r = pickup g x
-                 (x, y:ys) = splitAt r l
-             in Just $ x ++ [2] ++ ys
 
-fillOneHole :: (RandomGen g) => g -> [Int] -> [Int]
-fillOneHole g l = let r = pickup g $ findAllHoleIdx l
-                      (x, y:ys) = splitAt r l
-                  in x ++ [2] ++ ys
+fillOneHole :: (RandomGen g) => g -> [Int] -> Maybe [Int]
+fillOneHole g l =
+  case findAllHoleIdx l of
+   Nothing -> Nothing
+   Just idx -> let r = pickup g idx
+                   (x, y:ys) = splitAt r l
+               in Just $ x ++ [2] ++ ys
 
 group2by2 :: [Int] -> [[Int]]
 group2by2 [] = [[]]
@@ -83,9 +57,6 @@ group' s@(x:y:xs)
 squeeze :: [Int] -> [Int]
 squeeze = map sum . group' . (L.filter (/=0))
 
-squeeze' :: [Int] -> [Int]
-squeeze' = map sum . group . (L.filter (/=0))
-
 squeezeLeft :: [Int] -> [Int]
 squeezeLeft = addTailZero . squeeze
 
@@ -98,42 +69,29 @@ addTailZero = take maxSize . (++ repeat 0)
 addLeadingZero :: [Int] -> [Int]
 addLeadingZero = reverse . addTailZero . reverse
 
-growRow1' :: [[Int]] -> [[Int]]
-growRow1' (x:xs) = grow' x : xs
+squeezeMatrix :: (RandomGen g) => g -> ([Int] -> [Int]) -> Matrix Int -> Either (Matrix Int) String
+squeezeMatrix g f m =
+  case fillOneHole g $ concat . map f . toLists $ m of
+   Nothing -> Right "Matrix Full!"
+   Just x -> Left $ fromList maxSize maxSize x
 
-growRow1 :: [[Int]] -> [[Int]]
-growRow1 (x:xs) = grow x : xs
-
-grow' :: [Int] -> [Int]
-grow' = reverse . grow . reverse
-
-grow :: [Int] -> [Int]
-grow [] = []
-grow (0:xs) = 2:xs
-grow (x:xs) = x:(grow xs)
-
-squeezeMatrix :: (RandomGen g) => g -> ([Int] -> [Int]) -> Matrix Int -> Matrix Int
-squeezeMatrix g f = fromList maxSize maxSize . fillOneHole g . concat . map f . toLists
-
-tblLeft :: (RandomGen g) => g -> Matrix Int -> Matrix Int
+tblLeft :: (RandomGen g) => g -> Matrix Int -> Either (Matrix Int) String
 tblLeft g = squeezeMatrix g squeezeLeft
 
-tblRight :: (RandomGen g) => g -> Matrix Int -> Matrix Int
+tblRight :: (RandomGen g) => g -> Matrix Int -> Either (Matrix Int) String
 tblRight g = squeezeMatrix g squeezeRight
 
-tblDown :: (RandomGen g) => g -> Matrix Int -> Matrix Int
-tblDown g = M.transpose . tblRight g . M.transpose
+tblUp :: (RandomGen g) => g -> Matrix Int -> Either (Matrix Int) String
+tblUp g m =
+  case tblLeft g . M.transpose $ m of
+   Left m -> Left $ M.transpose m
+   x -> x
 
-tblUp :: (RandomGen g) => g -> Matrix Int -> Matrix Int
-tblUp g = M.transpose . tblLeft g . M.transpose
-
-test_tbl:: (StdGen -> Matrix Int -> Matrix Int) -> IO (Matrix Int)
-test_tbl f = do
-  g <- newStdGen
-  return $ f g test_matrix
-
-test_tbl_all :: IO [Matrix Int]
-test_tbl_all = sequence $ map (test_tbl) [tblLeft, tblRight, tblUp, tblDown]
+tblDown :: (RandomGen g) => g -> Matrix Int -> Either (Matrix Int) String
+tblDown g m =
+  case tblRight g . M.transpose $ m of
+   Left m -> Left $ M.transpose m
+   x -> x
 
 matrixToTable :: Widget Table -> Matrix (Widget FormattedText) -> IO ()
 matrixToTable tbl m  = do
@@ -154,20 +112,41 @@ loopGame tbl mat gen m  = do
     case k of
      KEsc -> shutdownUi >> return True
      KDown -> do
-       setTextMatrix mat (tblDown gen m)
-       loopGame tbl mat gen (tblDown gen m)
+       case tblDown gen m of
+        Left mm -> do
+          setTextMatrix mat mm
+          loopGame tbl mat gen mm
+        Right s -> do
+            putStrLn "Game over!"
        return True
+
      KUp -> do
-       setTextMatrix mat (tblUp gen m)
-       loopGame tbl mat gen (tblUp gen m)
+
+       case tblUp gen m of
+        Left mm -> do
+          setTextMatrix mat mm
+          loopGame tbl mat gen mm
+        Right s -> do
+            putStrLn "Game over!"
        return True
      KRight -> do
-       setTextMatrix mat (tblRight gen m)
-       loopGame tbl mat gen (tblRight gen m)
+
+       case tblRight gen m of
+        Left mm -> do
+          setTextMatrix mat mm
+          loopGame tbl mat gen mm
+        Right s -> do
+            putStrLn "Game over!"
        return True
      KLeft -> do
-       setTextMatrix mat (tblLeft gen m)
-       loopGame tbl mat gen (tblLeft gen m)
+
+       case tblLeft gen m of
+        Left mm -> do
+          setTextMatrix mat mm
+          loopGame tbl mat gen mm
+        Right s -> do
+            putStrLn "Game over!"
+
        return True
      _ -> return False
 
