@@ -49,7 +49,6 @@ pickup g l = let (r, _) = randomR (0, (length l)-1) g
                  (_, x:_) = splitAt r l
              in x
 
-
 fillOneHole :: (RandomGen g) => g -> [Int] -> Maybe [Int]
 fillOneHole g l =
   case findAllHoleIdx l of
@@ -58,20 +57,13 @@ fillOneHole g l =
                    (x, y:ys) = splitAt r l
                in Just $ x ++ [2] ++ ys
 
-group2by2 :: [Int] -> [[Int]]
-group2by2 [] = [[]]
-group2by2 [x] = [[x]]
-group2by2 (x:y:xs) = [x,y]:group2by2 xs
-
-group' :: [Int] -> [[Int]]
-group' [] = [[]]
-group' [x] = [[x]]
-group' s@(x:y:xs)
-  | x==y = group2by2 s
-  | otherwise = [x] : group' (y:xs)
-
 squeeze :: [Int] -> [Int]
-squeeze = map sum . group' . (L.filter (/=0))
+squeeze [] = []
+squeeze (0:x) = squeeze x
+squeeze [x] = [x]
+squeeze (x:y:xs)
+  | x==y = (x+y): squeeze xs
+  | otherwise = x : squeeze (y:xs)
 
 squeezeLeft :: [Int] -> [Int]
 squeezeLeft = addTailZero . squeeze
