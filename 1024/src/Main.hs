@@ -57,7 +57,9 @@ fillOneHole g l =
                    (x, y:ys) = splitAt r l
                in Just $ x ++ [2] ++ ys
 
-squeeze :: [Int] -> [Int]
+type Row = [Int]
+
+squeeze :: Row -> Row
 squeeze [] = []
 squeeze (0:x) = squeeze x
 squeeze [x] = [x]
@@ -65,10 +67,10 @@ squeeze (x:y:xs)
   | x==y = (x+y): squeeze xs
   | otherwise = x : squeeze (y:xs)
 
-squeezeLeft :: [Int] -> [Int]
+squeezeLeft :: Row -> Row
 squeezeLeft = take maxSize . (++ repeat 0) . squeeze
 
-squeezeRight :: [Int] -> [Int]
+squeezeRight :: Row -> Row
 squeezeRight = reverse . squeezeLeft . reverse
 
 squeezeMatrix :: (RandomGen g) => g -> ([Int] -> [Int]) -> Matrix Int -> Either (Matrix Int) String
