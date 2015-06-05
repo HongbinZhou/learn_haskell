@@ -66,16 +66,10 @@ squeeze (x:y:xs)
   | otherwise = x : squeeze (y:xs)
 
 squeezeLeft :: [Int] -> [Int]
-squeezeLeft = addTailZero . squeeze
+squeezeLeft = take maxSize . (++ repeat 0) . squeeze
 
 squeezeRight :: [Int] -> [Int]
-squeezeRight = addLeadingZero . reverse . squeeze . reverse
-
-addTailZero :: [Int] -> [Int]
-addTailZero = take maxSize . (++ repeat 0)
-
-addLeadingZero :: [Int] -> [Int]
-addLeadingZero = reverse . addTailZero . reverse
+squeezeRight = reverse . squeezeLeft . reverse
 
 squeezeMatrix :: (RandomGen g) => g -> ([Int] -> [Int]) -> Matrix Int -> Either (Matrix Int) String
 squeezeMatrix g f m =
