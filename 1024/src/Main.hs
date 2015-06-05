@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
@@ -10,6 +11,21 @@ import Data.Matrix as M
 import System.Random
 import qualified Data.Vector as V
 import Data.List as L
+
+import Control.Monad.Writer
+
+
+logMatrix :: (MonadWriter [String] m) => M.Matrix Int -> m (M.Matrix Int)
+logMatrix x = writer (x, ["Got matrix: " ++ show x])
+
+logNumber :: (MonadWriter [String] m) => Int -> m Int
+logNumber x = writer (x, ["Got number: " ++ show x])
+
+multWithLog :: (MonadWriter [String] m) => m Int
+multWithLog = do
+    a <- logNumber 3
+    b <- logNumber 5
+    return (a*b)
 
 maxSize = 4 :: Int
 

@@ -22,6 +22,7 @@ executable h1024
   -- other-extensions:    
   build-depends:       base >=4.8 && <4.9
                      , matrix >= 0.3.4.3
+                     , mtl >= 2.2.1
                      , random >= 1.1
                      , text >= 1.2.1.1
                      , vector >= 0.10.12.3
