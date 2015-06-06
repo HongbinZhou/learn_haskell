@@ -30,7 +30,7 @@ multWithLog = do
 maxSize = 4 :: Int
 
 initMatrix :: (RandomGen g) => g -> Matrix Int
-initMatrix g = let (Left x) = tblLeft g (zero maxSize maxSize) in x
+initMatrix g =  tblLeft g (zero maxSize maxSize)
 
 test_matrix :: Matrix Int
 test_matrix = M.fromLists [[2,2,0,2],
@@ -38,24 +38,29 @@ test_matrix = M.fromLists [[2,2,0,2],
                            [4,0,0,2],
                            [2,2,0,0]]
 
-findAllHoleIdx :: [Int] -> Maybe [Int]
-findAllHoleIdx l =
-  case foldl (\acc (a, i) -> if a==0 then acc ++ [i] else acc ) [] (zip l [0..]) of
-   [] -> Nothing
-   x -> Just x
-
 pickup :: (RandomGen g) => g -> [Int] -> Int
 pickup g l = let (r, _) = randomR (0, (length l)-1) g
                  (_, x:_) = splitAt r l
              in x
 
-fillOneHole :: (RandomGen g) => g -> [Int] -> Maybe [Int]
-fillOneHole g l =
-  case findAllHoleIdx l of
-   Nothing -> Nothing
-   Just idx -> let r = pickup g idx
-                   (x, y:ys) = splitAt r l
-               in Just $ x ++ [2] ++ ys
+fillOneHole ::
+  (RandomGen g) =>
+  g ->
+  Matrix Int ->
+  Matrix Int
+fillOneHole g =
+  M.fromList maxSize maxSize . randFill . M.toList
+  where randFill :: [Int] -> [Int]
+        randFill l = case findAllHoleIdx l of
+                      [] -> l
+                      idx -> let r = pickup g idx
+                                 (x,y:ys) = splitAt r l
+                             in x ++ [2] ++ ys
+
+        findAllHoleIdx :: [Int] -> [Int]
+        findAllHoleIdx l =
+          foldl (\acc (a, i) -> if a==0 then acc ++ [i] else acc ) [] (zip l [0..])
+
 
 type Row = [Int]
 
@@ -73,57 +78,54 @@ squeezeLeft = take maxSize . (++ repeat 0) . squeeze
 squeezeRight :: Row -> Row
 squeezeRight = reverse . squeezeLeft . reverse
 
-squeezeMatrix :: (RandomGen g) => g -> ([Int] -> [Int]) -> Matrix Int -> Either (Matrix Int) String
-squeezeMatrix g f m =
-  case fillOneHole g $ concat . map f . toLists $ m of
-   Nothing -> Right "Matrix Full!"
-   Just x -> Left $ fromList maxSize maxSize x
+squeezeMatrix ::
+  (RandomGen g) =>
+  g
+  -> ([Int] -> [Int])
+  -> Matrix Int
+  -> Matrix Int
+squeezeMatrix g f =
+  fillOneHole g . M.fromList maxSize maxSize . concat . map f . M.toLists
 
-tblLeft :: (RandomGen g) => g -> Matrix Int -> Either (Matrix Int) String
+tblLeft :: (RandomGen g) => g -> Matrix Int -> Matrix Int
 tblLeft g = squeezeMatrix g squeezeLeft
 
-tblRight :: (RandomGen g) => g -> Matrix Int -> Either (Matrix Int) String
+tblRight :: (RandomGen g) => g -> Matrix Int -> Matrix Int
 tblRight g = squeezeMatrix g squeezeRight
 
-tblUp :: (RandomGen g) => g -> Matrix Int -> Either (Matrix Int) String
-tblUp g m =
-  case tblLeft g . M.transpose $ m of
-   Left m -> Left $ M.transpose m
-   x -> x
+tblUp :: (RandomGen g) => g -> Matrix Int -> Matrix Int
+tblUp g =
+   M.transpose . tblLeft g . M.transpose
 
-tblDown :: (RandomGen g) => g -> Matrix Int -> Either (Matrix Int) String
-tblDown g m =
-  case tblRight g . M.transpose $ m of
-   Left m -> Left $ M.transpose m
-   x -> x
+tblDown :: (RandomGen g) => g -> Matrix Int -> Matrix Int
+tblDown g =
+   M.transpose . tblRight g . M.transpose
 
 matrixToTable :: Widget Table -> Matrix (Widget FormattedText) -> IO ()
 matrixToTable tbl m  = do
-  sequence $ addRow tbl <$> M.toLists m
-  return ()
+  sequence_ $ addRow tbl <$> M.toLists m
 
 textMatrix :: Matrix Int -> IO (Matrix (Widget FormattedText))
 textMatrix = sequence . fmap (plainText . T.pack . show)
 
 setTextMatrix :: Matrix (Widget FormattedText) -> Matrix Int -> IO ()
 setTextMatrix a b = do
-  sequence $ elementwise setText a ((T.pack . show) <$> b)
-  return ()
+  sequence_ $ elementwise setText a ((T.pack . show) <$> b)
 
 tblMove :: RandomGen g =>
      g ->
      Widget a ->
-     (g -> Matrix Int -> Either (Matrix Int) String) ->
+     (g -> Matrix Int -> Matrix Int) ->
      Matrix Int ->
      Matrix (Widget FormattedText) ->
      IO ()
-tblMove gen tbl f m mat = do
-       case f gen m of
-        Left mm -> do
-          setTextMatrix mat mm
-          loopGame gen tbl mat mm
-        Right s -> do
-            putStrLn "Game over!"
+tblMove gen tbl f m mat =
+  let mm = f gen m
+  in if mm  == m
+     then putStrLn "Game over!"
+     else do
+       setTextMatrix mat mm
+       loopGame gen tbl mat mm
 
 loopGame :: RandomGen g =>
      g
