@@ -30,7 +30,7 @@ multWithLog = do
 maxSize = 4 :: Int
 
 initMatrix :: (RandomGen g) => g -> Matrix Int
-initMatrix g =  tblLeft g (zero maxSize maxSize)
+initMatrix g =  moveMatrix g DRight (zero maxSize maxSize)
 
 test_matrix :: Matrix Int
 test_matrix = M.fromLists [[2,2,0,2],
@@ -64,6 +64,9 @@ fillOneHole g =
 
 type Row = [Int]
 
+-- squeeze Row to left
+-- eg: [2,2,4,0] -> [4,4]
+--     [2,2,2,4] -> [4,2,4]
 squeeze :: Row -> Row
 squeeze [] = []
 squeeze (0:x) = squeeze x
@@ -72,34 +75,33 @@ squeeze (x:y:xs)
   | x==y = (x+y): squeeze xs
   | otherwise = x : squeeze (y:xs)
 
-squeezeLeft :: Row -> Row
-squeezeLeft = take maxSize . (++ repeat 0) . squeeze
+data Direction =
+  DUp
+  | DDown
+  | DLeft
+  | DRight
 
-squeezeRight :: Row -> Row
-squeezeRight = reverse . squeezeLeft . reverse
-
-squeezeMatrix ::
+moveMatrix ::
   (RandomGen g) =>
   g
-  -> ([Int] -> [Int])
+  -> Direction
   -> Matrix Int
   -> Matrix Int
-squeezeMatrix g f =
-  fillOneHole g . M.fromList maxSize maxSize . concat . map f . M.toLists
+moveMatrix g DLeft =
+  fillOneHole g . M.fromLists . map squeezeLeft . M.toLists
+  where squeezeLeft = take maxSize . (++ repeat 0) . squeeze
+moveMatrix g DRight =
+  mirrorLR . moveMatrix g DLeft . mirrorLR
+moveMatrix g DDown =
+   M.transpose . moveMatrix g DRight . M.transpose
+moveMatrix g DUp =
+   M.transpose . moveMatrix g DLeft . M.transpose
 
-tblLeft :: (RandomGen g) => g -> Matrix Int -> Matrix Int
-tblLeft g = squeezeMatrix g squeezeLeft
+mirrorLR :: Matrix Int -> Matrix Int
+mirrorLR = M.fromLists . map reverse. M.toLists
 
-tblRight :: (RandomGen g) => g -> Matrix Int -> Matrix Int
-tblRight g = squeezeMatrix g squeezeRight
-
-tblUp :: (RandomGen g) => g -> Matrix Int -> Matrix Int
-tblUp g =
-   M.transpose . tblLeft g . M.transpose
-
-tblDown :: (RandomGen g) => g -> Matrix Int -> Matrix Int
-tblDown g =
-   M.transpose . tblRight g . M.transpose
+mirrorUD :: Matrix Int -> Matrix Int
+mirrorUD = M.transpose . mirrorLR . M.transpose
 
 matrixToTable :: Widget Table -> Matrix (Widget FormattedText) -> IO ()
 matrixToTable tbl m  = do
@@ -112,20 +114,20 @@ setTextMatrix :: Matrix (Widget FormattedText) -> Matrix Int -> IO ()
 setTextMatrix a b = do
   sequence_ $ elementwise setText a ((T.pack . show) <$> b)
 
-tblMove :: RandomGen g =>
+moveTbl :: RandomGen g =>
      g ->
      Widget a ->
-     (g -> Matrix Int -> Matrix Int) ->
+     Direction ->
      Matrix Int ->
      Matrix (Widget FormattedText) ->
      IO ()
-tblMove gen tbl f m mat =
-  let mm = f gen m
+moveTbl g tbl d m mat =
+  let mm = moveMatrix g d m
   in if mm  == m
      then putStrLn "Game over!"
      else do
        setTextMatrix mat mm
-       loopGame gen tbl mat mm
+       loopGame g tbl mat mm
 
 loopGame :: RandomGen g =>
      g
@@ -139,16 +141,16 @@ loopGame gen tbl mat m  = do
     case k of
      KEsc -> shutdownUi >> return True
      KDown -> do
-       tblMove gen tbl tblDown m mat
+       moveTbl gen tbl DDown m mat
        return True
      KUp -> do
-       tblMove gen tbl tblUp m mat
+       moveTbl gen tbl DUp m mat
        return True
      KRight -> do
-       tblMove gen tbl tblRight m mat
+       moveTbl gen tbl DRight m mat
        return True
      KLeft -> do
-       tblMove gen tbl tblLeft m mat
+       moveTbl gen tbl DLeft m mat
        return True
      _ -> return False
 
