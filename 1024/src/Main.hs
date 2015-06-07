@@ -30,7 +30,7 @@ multWithLog = do
 maxSize = 4 :: Int
 
 initMatrix :: (RandomGen g) => g -> Matrix Int
-initMatrix g =  moveMatrix g DRight (zero maxSize maxSize)
+initMatrix g =  fillOneHole g (zero maxSize maxSize)
 
 test_matrix :: Matrix Int
 test_matrix = M.fromLists [[2,2,0,2],
@@ -87,15 +87,19 @@ moveMatrix ::
   -> Direction
   -> Matrix Int
   -> Matrix Int
-moveMatrix g DLeft =
-  fillOneHole g . M.fromLists . map squeezeLeft . M.toLists
-  where squeezeLeft = take maxSize . (++ repeat 0) . squeeze
-moveMatrix g DRight =
-  mirrorLR . moveMatrix g DLeft . mirrorLR
-moveMatrix g DDown =
-   M.transpose . moveMatrix g DRight . M.transpose
-moveMatrix g DUp =
-   M.transpose . moveMatrix g DLeft . M.transpose
+moveMatrix g DLeft m
+  | squeezeMatrix m == m = m
+  | otherwise = fillOneHole g . squeezeMatrix $ m
+  where squeezeLeft :: Row -> Row
+        squeezeLeft = take maxSize . (++ repeat 0) . squeeze
+        squeezeMatrix :: Matrix Int -> Matrix Int
+        squeezeMatrix = M.fromLists . map squeezeLeft . M.toLists
+moveMatrix g DRight m =
+  mirrorLR . moveMatrix g DLeft . mirrorLR $ m
+moveMatrix g DDown m =
+   M.transpose . moveMatrix g DRight . M.transpose $ m
+moveMatrix g DUp m =
+   M.transpose . moveMatrix g DLeft . M.transpose $ m
 
 mirrorLR :: Matrix Int -> Matrix Int
 mirrorLR = M.fromLists . map reverse. M.toLists
