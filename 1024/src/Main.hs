@@ -136,13 +136,12 @@ moveTbl :: RandomGen g =>
      Matrix (Widget FormattedText) ->
      IO ()
 moveTbl g tbl d m mat =
-  let mm = moveMatrix g d m
-  in
-   if isGameOver mm
-   then putStrLn "Game over!"
-   else do
+  if isGameOver m
+  then putStrLn "Game over!"
+  else do
      setTextMatrix mat mm
      loopGame g tbl mat mm
+     where mm = moveMatrix g d m
 
 loopGame :: RandomGen g =>
      g
