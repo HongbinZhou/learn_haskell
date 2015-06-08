@@ -80,6 +80,22 @@ data Direction =
   | DDown
   | DLeft
   | DRight
+  deriving(Eq, Enum)
+
+squeezeMatrix ::
+  Direction
+  -> Matrix Int
+  -> Matrix Int
+squeezeMatrix DLeft
+  = M.fromLists . map squeezeLeft . M.toLists
+  where squeezeLeft :: Row -> Row
+        squeezeLeft = take maxSize . (++ repeat 0) . squeeze
+squeezeMatrix DRight =
+  mirrorLR . squeezeMatrix DLeft . mirrorLR
+squeezeMatrix DDown =
+   M.transpose . squeezeMatrix DRight . M.transpose
+squeezeMatrix DUp =
+   M.transpose . squeezeMatrix DLeft . M.transpose
 
 moveMatrix ::
   (RandomGen g) =>
@@ -87,19 +103,13 @@ moveMatrix ::
   -> Direction
   -> Matrix Int
   -> Matrix Int
-moveMatrix g DLeft m
-  | squeezeMatrix m == m = m
-  | otherwise = fillOneHole g . squeezeMatrix $ m
-  where squeezeLeft :: Row -> Row
-        squeezeLeft = take maxSize . (++ repeat 0) . squeeze
-        squeezeMatrix :: Matrix Int -> Matrix Int
-        squeezeMatrix = M.fromLists . map squeezeLeft . M.toLists
-moveMatrix g DRight m =
-  mirrorLR . moveMatrix g DLeft . mirrorLR $ m
-moveMatrix g DDown m =
-   M.transpose . moveMatrix g DRight . M.transpose $ m
-moveMatrix g DUp m =
-   M.transpose . moveMatrix g DLeft . M.transpose $ m
+moveMatrix g d m
+  | squeezeMatrix d m == m = m
+  | otherwise = fillOneHole g . squeezeMatrix d $ m
+
+isGameOver :: Matrix Int -> Bool
+isGameOver m =
+  and $ map (\x -> m == squeezeMatrix x m) [DUp .. DRight]
 
 mirrorLR :: Matrix Int -> Matrix Int
 mirrorLR = M.fromLists . map reverse. M.toLists
@@ -127,11 +137,12 @@ moveTbl :: RandomGen g =>
      IO ()
 moveTbl g tbl d m mat =
   let mm = moveMatrix g d m
-  in if mm  == m
-     then putStrLn "Game over!"
-     else do
-       setTextMatrix mat mm
-       loopGame g tbl mat mm
+  in
+   if isGameOver mm
+   then putStrLn "Game over!"
+   else do
+     setTextMatrix mat mm
+     loopGame g tbl mat mm
 
 loopGame :: RandomGen g =>
      g
