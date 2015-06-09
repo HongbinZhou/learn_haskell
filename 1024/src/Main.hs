@@ -28,7 +28,7 @@ multWithLog = do
     b <- logNumber 5
     return (a*b)
 
-maxSize = 2 :: Int
+maxSize = 4 :: Int
 
 initMatrix :: (RandomGen g) => g -> Matrix Int
 initMatrix g =  fillOneHole g (zero maxSize maxSize)
@@ -56,7 +56,7 @@ fillOneHole g =
                       [] -> l
                       idx -> let r = pickup g idx
                                  (x,y:ys) = splitAt r l
-                             in x ++ [2] ++ ys
+                             in x ++ [pickup g [2,4]] ++ ys
 
         findAllHoleIdx :: [Int] -> [Int]
         findAllHoleIdx l =
@@ -161,20 +161,21 @@ loopGame :: RandomGen g =>
      -> IO ()
 loopGame gen tbl mat m header = do
 
+  let (gen', _) = split gen
   tbl `onKeyPressed` \_ k _ ->
     case k of
      KEsc -> shutdownUi >> return True
      KDown -> do
-       moveTbl gen tbl DDown m mat header
+       moveTbl gen' tbl DDown m mat header
        return True
      KUp -> do
-       moveTbl gen tbl DUp m mat header
+       moveTbl gen' tbl DUp m mat header
        return True
      KRight -> do
-       moveTbl gen tbl DRight m mat header
+       moveTbl gen' tbl DRight m mat header
        return True
      KLeft -> do
-       moveTbl gen tbl DLeft m mat header
+       moveTbl gen' tbl DLeft m mat header
        return True
      _ -> return False
 
