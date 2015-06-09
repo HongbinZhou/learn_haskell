@@ -66,17 +66,6 @@ fillOneHole g =
 
 type Row = [Int]
 
--- squeeze Row to left
--- eg: [2,2,4,0] -> [4,4]
---     [2,2,2,4] -> [4,2,4]
-squeeze :: Row -> Row
-squeeze [] = []
-squeeze (0:x) = squeeze x
-squeeze [x] = [x]
-squeeze (x:y:xs)
-  | x==y = (x+y): squeeze xs
-  | otherwise = x : squeeze (y:xs)
-
 data Direction =
   DUp
   | DDown
@@ -91,7 +80,17 @@ squeezeMatrix ::
 squeezeMatrix DLeft
   = M.fromLists . map squeezeLeft . M.toLists
   where squeezeLeft :: Row -> Row
-        squeezeLeft = take maxSize . (++ repeat 0) . squeeze
+        squeezeLeft = take maxSize . (++ repeat 0) . squeeze . filter (/=0)
+        -- squeeze Row to left, input should has no zero!
+        -- eg: [2,2,4] -> [4,4]
+        --     [2,2,2,4] -> [4,2,4]
+        squeeze :: Row -> Row
+        squeeze [] = []
+        squeeze [x] = [x]
+        squeeze (x:y:xs)
+          | x==y = (x+y): squeeze xs
+          | otherwise = x : squeeze (y:xs)
+
 squeezeMatrix DRight =
   mirrorLR . squeezeMatrix DLeft . mirrorLR
 squeezeMatrix DDown =
