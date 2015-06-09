@@ -122,8 +122,15 @@ matrixToTable :: Widget Table -> Matrix (Widget FormattedText) -> IO ()
 matrixToTable tbl m  = do
   sequence_ $ addRow tbl <$> M.toLists m
 
-textMatrix :: Matrix Int -> IO (Matrix (Widget FormattedText))
-textMatrix = sequence . fmap (plainText . T.pack . show)
+textMatrix ::
+  Matrix Int
+  -> IO (Matrix (Widget FormattedText))
+textMatrix =
+  sequence . fmap (textInMatrix . T.pack . show )
+  where textInMatrix :: T.Text -> IO (Widget FormattedText)
+        textInMatrix text =
+          textWidget wrap text
+          >>= withNormalAttribute (fgColor brightGreen)
 
 setTextMatrix :: Matrix (Widget FormattedText) -> Matrix Int -> IO ()
 setTextMatrix a b = do
