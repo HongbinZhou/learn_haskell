@@ -29,6 +29,7 @@ multWithLog = do
     return (a*b)
 
 maxSize = 4 :: Int
+titleAttr = brightWhite `on` blue
 
 initMatrix :: (RandomGen g) => g -> Matrix Int
 initMatrix g =  fillOneHole g (zero maxSize maxSize)
@@ -179,6 +180,28 @@ loopGame gen tbl mat m header = do
        return True
      _ -> return False
 
+data Game =
+  Game {
+    theHeader :: Widget FormattedText
+    , theTable :: Widget Table
+    , theFooter :: Widget FormattedText
+    }
+
+mkGame :: IO Game
+mkGame = do
+  let bdrStyle = take maxSize $
+                 repeat (column ColAuto `pad` (padAll 2)
+                         `align` AlignCenter)
+  tbl <- newTable bdrStyle BorderFull
+
+  hd <- plainText T.empty >>= withNormalAttribute titleAttr
+  ft <- plainText T.empty >>= withNormalAttribute titleAttr
+
+  return $ Game {
+    theHeader = hd
+    ,theTable = tbl
+    ,theFooter = ft
+    }
 
 main :: IO ()
 main = do
