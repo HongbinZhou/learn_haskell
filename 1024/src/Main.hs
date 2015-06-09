@@ -5,6 +5,7 @@ module Main where
 
 import qualified Data.Text as T
 import Graphics.Vty.Widgets.All
+import Graphics.Vty.Attributes
 import Graphics.Vty.Input.Events
 
 import Data.Matrix as M
@@ -27,7 +28,7 @@ multWithLog = do
     b <- logNumber 5
     return (a*b)
 
-maxSize = 4 :: Int
+maxSize = 2 :: Int
 
 initMatrix :: (RandomGen g) => g -> Matrix Int
 initMatrix g =  fillOneHole g (zero maxSize maxSize)
@@ -134,13 +135,14 @@ moveTbl :: RandomGen g =>
      Direction ->
      Matrix Int ->
      Matrix (Widget FormattedText) ->
+     Widget FormattedText ->
      IO ()
-moveTbl g tbl d m mat =
+moveTbl g tbl d m mat header=
   if isGameOver m
-  then putStrLn "Game over!"
+  then setText header "Game over!"
   else do
      setTextMatrix mat mm
-     loopGame g tbl mat mm
+     loopGame g tbl mat mm header
      where mm = moveMatrix g d m
 
 loopGame :: RandomGen g =>
@@ -148,23 +150,24 @@ loopGame :: RandomGen g =>
      -> Widget a
      -> Matrix (Widget FormattedText)
      -> Matrix Int
+     -> Widget FormattedText
      -> IO ()
-loopGame gen tbl mat m  = do
+loopGame gen tbl mat m header = do
 
   tbl `onKeyPressed` \_ k _ ->
     case k of
      KEsc -> shutdownUi >> return True
      KDown -> do
-       moveTbl gen tbl DDown m mat
+       moveTbl gen tbl DDown m mat header
        return True
      KUp -> do
-       moveTbl gen tbl DUp m mat
+       moveTbl gen tbl DUp m mat header
        return True
      KRight -> do
-       moveTbl gen tbl DRight m mat
+       moveTbl gen tbl DRight m mat header
        return True
      KLeft -> do
-       moveTbl gen tbl DLeft m mat
+       moveTbl gen tbl DLeft m mat header
        return True
      _ -> return False
 
@@ -181,7 +184,11 @@ main = do
   mat <- textMatrix m
   matrixToTable tbl mat
 
-  ui <- centered tbl
+  -- ui <- centered tbl
+  gameHeader <- textWidget wrap T.empty >>= withNormalAttribute (fgColor brightGreen)
+  setText gameHeader "Game start!"
+
+  ui <- centered =<< (vBox gameHeader tbl)
 
   fg <- newFocusGroup
   addToFocusGroup fg tbl
@@ -189,6 +196,6 @@ main = do
   coll <- newCollection
   addToCollection coll ui fg
 
-  loopGame gen tbl mat m
+  loopGame gen tbl mat m gameHeader
 
   runUi coll defaultContext
