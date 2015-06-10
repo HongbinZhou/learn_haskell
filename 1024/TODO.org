@@ -1,10 +1,12 @@
 * DONE what if board is full?
 CLOSED: [2015-06-05 Fri 13:14]
-* TODO Game is over only when all direction can't move, not only one.
+* DONE Game is over only when all direction can't move, not only one.
+CLOSED: [2015-06-10 Wed 22:29]
 [2015-06-05 Fri 13:14]
 * TODO Highlight/enlarge font to make it easier to follow.
 [2015-06-05 Fri 13:15]
-* TODO Add step information
+* DONE Add step information
+CLOSED: [2015-06-10 Wed 22:29]
 [2015-06-05 Fri 13:15]
 * TODO Able to log steps into a file.
 [2015-06-05 Fri 13:16]
