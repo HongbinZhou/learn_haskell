@@ -12,6 +12,7 @@ import Data.Matrix as M
 import System.Random
 import qualified Data.Vector as V
 import Data.List as L
+import Data.Maybe
 
 import Control.Monad.Writer
 
@@ -126,15 +127,37 @@ textMatrix ::
   Matrix Int
   -> IO (Matrix (Widget FormattedText))
 textMatrix =
-  sequence . fmap (textInMatrix . T.pack . show )
-  where textInMatrix :: T.Text -> IO (Widget FormattedText)
-        textInMatrix text =
-          textWidget wrap text
-          >>= withNormalAttribute (fgColor brightGreen)
+  sequence . fmap textInMatrix
+  where textInMatrix :: Int -> IO (Widget FormattedText)
+        textInMatrix i =
+          plainTextWithAttrs (colorize i)
+
+
+-- | calculate colors and styles for a given number
+colorize :: Int -> [(T.Text, Attr)]
+colorize i = [(s,attr)]
+    where
+        s = if i /= 0 then (T.pack . show) i else " "
+        attr = Attr (SetTo colorSty) (SetTo colorNum) Default
+        (colorSty, colorNum) = fromMaybe (bold,ISOColor 3) (lookup i colorDict)
+        colorDict =
+            [ (   0, (  dim, ISOColor 0))
+            , (   2, (  dim, ISOColor 7))
+            , (   4, (  dim, ISOColor 6))
+            , (   8, (  dim, ISOColor 3))
+            , (  16, (  dim, ISOColor 2))
+            , (  32, (  dim, ISOColor 1))
+            , (  64, ( bold, ISOColor 7))
+            , ( 128, ( bold, ISOColor 4))
+            , ( 256, ( bold, ISOColor 6))
+            , ( 512, ( bold, ISOColor 2))
+            , (1024, ( bold, ISOColor 1))
+            , (2048, ( bold, ISOColor 3))
+            ]
 
 setTextMatrix :: Matrix (Widget FormattedText) -> Matrix Int -> IO ()
 setTextMatrix a b = do
-  sequence_ $ elementwise setText a ((T.pack . show) <$> b)
+  sequence_ $ elementwise setTextWithAttrs a (colorize <$> b)
 
 moveTbl :: RandomGen g =>
      g ->
