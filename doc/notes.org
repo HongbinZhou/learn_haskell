@@ -1,0 +1,33 @@
+
+* What is Monoid?
+[2015-08-28 Fri 22:34]
+
+ref:
+comment17774
+http://book.realworldhaskell.org/read/writing-a-library-working-with-json-data.html
+
+
+A monoid is a set of things which you can put together, in such a way
+that two conditions hold. Let's be a bit more precise: a set S with a
+binary operation <> is a monoid if the following are true:
+
+1) There must be some thing called the "identity", which you can
+   combine with any other thing x and get x back. So y is an identity
+   if yx = xy = x for any x in S.
+
+2) The operation <> must be "associative", which basically means we
+   can just write x <> y <> z without needing parentheses. Precisely,
+   it means (x <> y) <> z = x <> (y <> z) for any x,y,z in S.
+
+Some classic examples:
+
+a) The set of integers (..., -1, 0, 1, 2, ...) are a monoid when <> is
+   addition (so <> is +), where 0 is the identity element.
+
+b) The integers are also a monoid when <> is multiplication, with 1 as
+   the identity.
+
+c) Lists are a monoid with the operation of concatenation (so <> is ++
+   in Haskell) where the identity is the empty list []
+
+Note this means strings are as well, with "" as the identity.
