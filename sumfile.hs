@@ -12,6 +12,6 @@ numList2Str  = foldr (\x acc -> show x ++ " " ++ acc) ""
 -- | run: cat numbers.txt | ./sumfile
 main :: IO ()
 main = do
-      contents <- getContents
-      print (sumFile contents)
+  contents <- getContents
+  print (sumFile contents)
     where sumFile = sum . map read . words
