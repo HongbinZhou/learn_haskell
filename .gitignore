@@ -8,3 +8,5 @@
 /1024/TAGS
 .stack-work
 dist
+*.hi
+*.o
