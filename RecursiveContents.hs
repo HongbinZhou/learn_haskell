@@ -5,7 +5,7 @@ import System.Directory (doesDirectoryExist, getDirectoryContents)
 import System.FilePath ((</>))
 import System.IO
 import System.Posix (getFileStatus, fileSize, FileOffset)
-import Control.Exception.Base (SomeException(..), handle)
+import Control.Exception.Base (SomeException(..), handle, bracket)
 
 getRecursiveContents :: FilePath -> IO [FilePath]
 getRecursiveContents topdir = do
@@ -33,6 +33,19 @@ saferFileSize file =
       size <- hFileSize h
       hClose h
       return (Just size)
+
+-- |
+--  http://hackage.haskell.org/package/base-4.8.1.0/docs/Control-Exception.html#v:bracket
+--  bracket :: IO a            ,computation to run first ("acquire resource")
+--             -> (a -> IO b)  ,computation to run last ("release resource")
+--             -> (a -> IO c)  ,computation to run in-between
+--             -> IO c
+getFileSize' :: FilePath -> IO (Maybe Integer)
+getFileSize' file =
+    handle (\(SomeException _) -> return Nothing) $
+      bracket (openFile file ReadMode) hClose $ \h -> do
+          size <- hFileSize h
+          return (Just size)
 
 -- | no need to open file
 getFileSize :: FilePath -> IO FileOffset
