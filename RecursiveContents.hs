@@ -5,6 +5,7 @@ import System.Directory (doesDirectoryExist, getDirectoryContents)
 import System.FilePath ((</>))
 import System.IO
 import System.Posix (getFileStatus, fileSize, FileOffset)
+import Control.Exception.Base (SomeException(..), handle)
 
 getRecursiveContents :: FilePath -> IO [FilePath]
 getRecursiveContents topdir = do
@@ -22,6 +23,16 @@ getRecursiveContents topdir = do
 simpleFileSize :: FilePath -> IO Integer
 simpleFileSize path =
     withFile path ReadMode hFileSize
+
+-- | only get size for normal files,
+--   others are exception, will return Nothing
+saferFileSize :: FilePath -> IO (Maybe Integer)
+saferFileSize file =
+    handle (\(SomeException _) -> return Nothing) $ do
+      h <- openFile file ReadMode
+      size <- hFileSize h
+      hClose h
+      return (Just size)
 
 -- | no need to open file
 getFileSize :: FilePath -> IO FileOffset
