@@ -123,6 +123,13 @@ greaterP = liftP (>)
 lessP :: (Ord a) => InfoP a -> a -> Predicate
 lessP = liftP (<)
 
+liftP2 :: (a -> b -> c) -> InfoP a -> InfoP b -> InfoP c
+liftP2 k ma mb = \f p s t -> (ma f p s t) `k` (mb f p s t)
+
+andP, orP :: InfoP Bool -> InfoP Bool -> InfoP Bool
+andP = liftP2 (&&)
+orP = liftP2 (||)
+
 liftPath :: (FilePath -> a) -> (InfoP a)
 liftPath ff = \f _ _ _ -> ff f
 
@@ -138,3 +145,8 @@ test3 = do
 test4 = do
   t <- getModificationTime "./re.hs"
   betterFind (timeP `greaterP` t) "."
+
+test5 = betterFind
+        ((pathP `equalP` "./re.hs")
+        `andP` (sizeP `greaterP` 100))
+        "."
