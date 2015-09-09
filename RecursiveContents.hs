@@ -1,6 +1,6 @@
 module RecusiveContents (getRecursiveContents) where
 
-import Control.Monad (forM)
+import Control.Monad (forM, filterM)
 import System.Directory (doesDirectoryExist, getDirectoryContents, Permissions(..), getModificationTime, getPermissions)
 import Data.Time (UTCTime(..))
 import System.FilePath ((</>), takeExtension)
@@ -76,12 +76,14 @@ type Predicate = FilePath
                -> Bool
 
 betterFind :: Predicate -> FilePath -> IO [FilePath]
-betterFind p path = do
-  perm <- getPermissions path
-  size <- saferFileSize path
-  mtime <- getModificationTime path
-  cont <- getRecursiveContents path
-  return $ filter (\x -> p x perm size mtime) cont
+betterFind p path =
+    getRecursiveContents path >>= filterM check
+        where check :: FilePath -> IO Bool
+              check file = do
+                perm <- getPermissions file
+                size <- saferFileSize file
+                mtime <- getModificationTime file
+                return (p file perm size mtime)
 
 type InfoP a = FilePath
              -> Permissions
@@ -102,13 +104,37 @@ sizeP _ _ _ _ = -1
 timeP :: InfoP UTCTime
 timeP _ _ _ t = t
 
+equalP' :: (Eq a) => InfoP a -> a -> Predicate
+equalP' info a = \f p s t -> (info f p s t) == a
+
+liftP :: (a -> b -> c)
+      -> (InfoP a)
+      -> b
+      -> (InfoP c)
+liftP ff info  b =
+    \f p s t -> (info f p s t) `ff` b
+
 equalP :: (Eq a) => InfoP a -> a -> Predicate
-equalP info a = \f p s t -> (info f p s t) == a
+equalP = liftP (==)
+
+greaterP :: (Ord a) => InfoP a -> a -> Predicate
+greaterP = liftP (>)
+
+lessP :: (Ord a) => InfoP a -> a -> Predicate
+lessP = liftP (<)
 
 liftPath :: (FilePath -> a) -> (InfoP a)
 liftPath ff = \f _ _ _ -> ff f
 
-findFileWithExt' :: FilePath -> IO [FilePath]
-findFileWithExt' =
-    let pat=liftPath takeExtension `equalP` ".hs"
-    in betterFind pat
+test1 = betterFind (liftPath takeExtension `equalP` ".hs") "."
+test11 = betterFind (pathP `equalP` "./re.hs") "."
+
+test2 = betterFind (sizeP `greaterP` 100000) "."
+
+test3 = do
+  perm <- getPermissions "./re.hs"
+  betterFind (permP `greaterP` perm) "."
+
+test4 = do
+  t <- getModificationTime "./re.hs"
+  betterFind (timeP `greaterP` t) "."
