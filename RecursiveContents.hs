@@ -1,7 +1,8 @@
 module RecusiveContents (getRecursiveContents) where
 
 import Control.Monad (forM)
-import System.Directory (doesDirectoryExist, getDirectoryContents)
+import System.Directory (doesDirectoryExist, getDirectoryContents, Permissions(..), getModificationTime, getPermissions)
+import Data.Time (UTCTime(..))
 import System.FilePath ((</>), takeExtension)
 import System.IO (hFileSize, hClose, openFile, withFile, IOMode(..))
 import System.Posix (getFileStatus, fileSize, FileOffset)
@@ -66,3 +67,48 @@ findFileWithName file = simpleFind ((==) file)
 findFileWithExt :: String -> FilePath -> IO [FilePath]
 findFileWithExt ext =
     simpleFind (\f -> takeExtension f == ext )
+
+-- |
+type Predicate = FilePath
+               -> Permissions   -- file permissions
+               -> Maybe Integer -- file size
+               -> UTCTime       -- file modifid time
+               -> Bool
+
+betterFind :: Predicate -> FilePath -> IO [FilePath]
+betterFind p path = do
+  perm <- getPermissions path
+  size <- saferFileSize path
+  mtime <- getModificationTime path
+  cont <- getRecursiveContents path
+  return $ filter (\x -> p x perm size mtime) cont
+
+type InfoP a = FilePath
+             -> Permissions
+             -> Maybe Integer
+             -> UTCTime
+             -> a
+
+pathP :: InfoP FilePath
+pathP p _ _ _ = p
+
+permP :: InfoP Permissions
+permP _ perm _ _ = perm
+
+sizeP :: InfoP Integer
+sizeP _ _ (Just s) _ = s
+sizeP _ _ _ _ = -1
+
+timeP :: InfoP UTCTime
+timeP _ _ _ t = t
+
+equalP :: (Eq a) => InfoP a -> a -> Predicate
+equalP info a = \f p s t -> (info f p s t) == a
+
+liftPath :: (FilePath -> a) -> (InfoP a)
+liftPath ff = \f _ _ _ -> ff f
+
+findFileWithExt' :: FilePath -> IO [FilePath]
+findFileWithExt' =
+    let pat=liftPath takeExtension `equalP` ".hs"
+    in betterFind pat
