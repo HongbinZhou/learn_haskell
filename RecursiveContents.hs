@@ -2,7 +2,7 @@ module RecusiveContents (getRecursiveContents) where
 
 import Control.Monad (forM)
 import System.Directory (doesDirectoryExist, getDirectoryContents)
-import System.FilePath ((</>))
+import System.FilePath ((</>), takeExtension)
 import System.IO (hFileSize, hClose, openFile, withFile, IOMode(..))
 import System.Posix (getFileStatus, fileSize, FileOffset)
 import Control.Exception.Base (SomeException(..), handle, bracket)
@@ -52,3 +52,17 @@ getFileSize :: FilePath -> IO FileOffset
 getFileSize path = do
     fs <- getFileStatus path
     return $ fileSize fs
+
+simpleFind :: (FilePath -> Bool) -> FilePath -> IO [FilePath]
+simpleFind p path = do
+  names <- getRecursiveContents path
+  return (filter p names)
+
+-- | find file with name `file`
+findFileWithName :: FilePath -> FilePath -> IO [FilePath]
+findFileWithName file = simpleFind ((==) file)
+
+-- | find file with extention `ext`
+findFileWithExt :: String -> FilePath -> IO [FilePath]
+findFileWithExt ext =
+    simpleFind (\f -> takeExtension f == ext )
