@@ -3,7 +3,7 @@ module RecusiveContents (getRecursiveContents) where
 import Control.Monad (forM)
 import System.Directory (doesDirectoryExist, getDirectoryContents)
 import System.FilePath ((</>))
-import System.IO
+import System.IO (hFileSize, hClose, openFile, withFile, IOMode(..))
 import System.Posix (getFileStatus, fileSize, FileOffset)
 import Control.Exception.Base (SomeException(..), handle, bracket)
 
